@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from './supabase';
+import { getSupabase, isSupabaseConfigured } from './supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { Entitlements, UserRole } from '@/types';
 import { getDataForMigration, clearLocalData } from './localStorage';
@@ -96,6 +96,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const initAuth = async () => {
+      // Check if Supabase is configured
+      if (!isSupabaseConfigured()) {
+        setLoading(false);
+        return;
+      }
+
+      const supabase = getSupabase();
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
@@ -115,6 +127,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initAuth();
+
+    // Set up auth state change listener
+    const supabase = getSupabase();
+    if (!supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -142,17 +158,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [fetchEntitlements, fetchRole, migrateLocalData]);
 
   const signUp = async (email: string, password: string) => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { error: new Error('Supabase not configured') };
+    }
     const { error } = await supabase.auth.signUp({ email, password });
     return { error: error as Error | null };
   };
 
   const signIn = async (email: string, password: string) => {
+    const supabase = getSupabase();
+    if (!supabase) {
+      return { error: new Error('Supabase not configured') };
+    }
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error: error as Error | null };
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const supabase = getSupabase();
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setSession(null);
     setEntitlements(defaultEntitlements);
