@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
+import { ThemeProvider } from "@/lib/theme-context";
 import Header from "@/components/Header";
 import SignupPrompt from "@/components/SignupPrompt";
 
@@ -27,15 +28,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 dark:bg-slate-900`}
       >
-        <AuthProvider>
-          <Header />
-          <main>{children}</main>
-          <SignupPrompt />
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <a href="#main-content" className="skip-to-main">
+              Skip to main content
+            </a>
+            <Header />
+            <main id="main-content">{children}</main>
+            <SignupPrompt />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

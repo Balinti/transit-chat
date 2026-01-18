@@ -79,48 +79,51 @@ export default function IncidentFeed({
 
   if (loading) {
     return (
-      <Card variant="bordered" className="p-4">
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-          <div className="h-16 bg-gray-200 rounded"></div>
-          <div className="h-16 bg-gray-200 rounded"></div>
+      <Card variant="bordered" className="p-4 dark:bg-slate-800 dark:border-slate-700">
+        <div className="animate-pulse space-y-3" aria-label="Loading incidents">
+          <div className="h-4 bg-gray-200 dark:bg-slate-600 rounded w-1/3"></div>
+          <div className="h-16 bg-gray-200 dark:bg-slate-600 rounded"></div>
+          <div className="h-16 bg-gray-200 dark:bg-slate-600 rounded"></div>
         </div>
       </Card>
     );
   }
 
   return (
-    <Card variant="bordered" className="p-4">
-      <h3 className="font-semibold text-gray-900 mb-3">Rider Signals</h3>
+    <Card variant="bordered" className="p-4 dark:bg-slate-800 dark:border-slate-700">
+      <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Rider Signals</h3>
 
       {error && (
-        <div className="p-2 bg-red-50 text-red-700 text-sm rounded mb-3">
+        <div
+          className="p-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm rounded mb-3"
+          role="alert"
+        >
           {error}
         </div>
       )}
 
       {incidents.length === 0 ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           No active incidents reported. Routes are running smoothly.
         </p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3" role="feed" aria-label="Transit incident feed">
           {incidents.map((incident) => {
             const info = REPORT_TYPE_INFO[incident.type];
             return (
-              <div
+              <article
                 key={incident.id}
-                className="p-3 bg-gray-50 rounded-lg border border-gray-100"
+                className="p-3 bg-gray-50 dark:bg-slate-700 rounded-lg border border-gray-100 dark:border-slate-600"
               >
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex items-center space-x-2">
-                    <span className="text-lg">{info.icon}</span>
-                    <span className="font-medium text-gray-900">{info.label}</span>
+                    <span className="text-lg" aria-hidden="true">{info.icon}</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{info.label}</span>
                   </div>
                   {getConfidenceBadge(incident.confidence, incident.score)}
                 </div>
 
-                <div className="flex items-center text-sm text-gray-600 space-x-2">
+                <div className="flex flex-wrap items-center text-sm text-gray-600 dark:text-gray-300 gap-2">
                   {incident.route && (
                     <span
                       className="px-2 py-0.5 rounded text-white text-xs font-medium"
@@ -132,17 +135,20 @@ export default function IncidentFeed({
                     </span>
                   )}
                   {incident.stop && <span>{incident.stop.stop_name}</span>}
-                  <span className="text-gray-400">|</span>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400 dark:text-gray-500" aria-hidden="true">|</span>
+                  <time
+                    className="text-gray-500 dark:text-gray-400"
+                    dateTime={incident.last_report_at}
+                  >
                     {formatTime(incident.last_report_at)}
-                  </span>
+                  </time>
                 </div>
 
-                <div className="mt-2 text-xs text-gray-500">
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {incident.confirmations_count} confirmation
                   {incident.confirmations_count !== 1 ? 's' : ''}
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>

@@ -98,34 +98,46 @@ export default function ReportPanel({
   ];
 
   return (
-    <Card variant="bordered" className="p-4">
-      <h3 className="font-semibold text-gray-900 mb-3">Report Now</h3>
+    <Card variant="bordered" className="p-4 dark:bg-slate-800 dark:border-slate-700">
+      <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Report Now</h3>
 
       {!selectedRoute || !selectedStop ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-gray-500 dark:text-gray-400">
           Select a route and stop above to report an issue
         </p>
       ) : (
         <>
-          <p className="text-sm text-gray-600 mb-3">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
             Reporting for{' '}
             <span className="font-medium">{selectedRoute.route_short_name}</span> at{' '}
             <span className="font-medium">{selectedStop.stop_name}</span>
           </p>
 
           {error && (
-            <div className="mb-3 p-2 bg-red-50 text-red-700 text-sm rounded">
+            <div
+              className="mb-3 p-2 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 text-sm rounded"
+              role="alert"
+              aria-live="assertive"
+            >
               {error}
             </div>
           )}
 
           {success && (
-            <div className="mb-3 p-2 bg-green-50 text-green-700 text-sm rounded">
+            <div
+              className="mb-3 p-2 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm rounded"
+              role="status"
+              aria-live="polite"
+            >
               {success}
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-2">
+          <div
+            className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+            role="group"
+            aria-label="Report type options"
+          >
             {reportTypes.map((type) => {
               const info = REPORT_TYPE_INFO[type];
               return (
@@ -133,13 +145,15 @@ export default function ReportPanel({
                   key={type}
                   variant="outline"
                   size="sm"
-                  className="flex flex-col items-center py-3 h-auto"
+                  className="flex flex-col items-center py-3 h-auto min-h-[60px] touch-manipulation dark:border-slate-600 dark:text-gray-200 dark:hover:bg-slate-700"
                   onClick={() => handleReport(type)}
                   disabled={submitting !== null}
+                  aria-label={`Report ${info.label}`}
+                  aria-busy={submitting === type}
                 >
-                  <span className="text-lg mb-1">{info.icon}</span>
+                  <span className="text-lg mb-1" aria-hidden="true">{info.icon}</span>
                   <span className="text-xs text-center leading-tight">
-                    {submitting === type ? '...' : info.label}
+                    {submitting === type ? 'Submitting...' : info.label}
                   </span>
                 </Button>
               );
@@ -147,7 +161,7 @@ export default function ReportPanel({
           </div>
 
           {!user && (
-            <p className="text-xs text-gray-500 mt-3 text-center">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-3 text-center">
               Reporting anonymously
             </p>
           )}
