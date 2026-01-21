@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getSupabase, isSupabaseConfigured } from './supabase';
+import { getSupabase, isSupabaseConfigured, trackUserLogin } from './supabase';
 import { User, Session } from '@supabase/supabase-js';
 import { Entitlements, UserRole } from '@/types';
 import { getDataForMigration, clearLocalData } from './localStorage';
@@ -12,8 +12,7 @@ interface AuthContextType {
   role: UserRole;
   entitlements: Entitlements | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   refreshEntitlements: () => Promise<void>;
 }
@@ -33,8 +32,7 @@ const AuthContext = createContext<AuthContextType>({
   role: 'rider',
   entitlements: defaultEntitlements,
   loading: true,
-  signUp: async () => ({ error: null }),
-  signIn: async () => ({ error: null }),
+  signInWithGoogle: async () => {},
   signOut: async () => {},
   refreshEntitlements: async () => {},
 });
@@ -103,10 +101,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const supabase = getSupabase();
-      if (!supabase) {
-        setLoading(false);
-        return;
-      }
 
       try {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -130,7 +124,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up auth state change listener
     const supabase = getSupabase();
-    if (!supabase) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -143,8 +136,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             fetchRole(newSession.access_token),
           ]);
 
-          // Migrate local data on sign in
+          // Track user login and migrate local data on sign in
           if (event === 'SIGNED_IN') {
+            if (newSession.user?.email) {
+              await trackUserLogin(newSession.user.email);
+            }
             await migrateLocalData(newSession.access_token);
           }
         } else {
@@ -157,29 +153,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchEntitlements, fetchRole, migrateLocalData]);
 
-  const signUp = async (email: string, password: string) => {
+  const signInWithGoogle = async () => {
     const supabase = getSupabase();
-    if (!supabase) {
-      return { error: new Error('Supabase not configured') };
-    }
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error: error as Error | null };
-  };
-
-  const signIn = async (email: string, password: string) => {
-    const supabase = getSupabase();
-    if (!supabase) {
-      return { error: new Error('Supabase not configured') };
-    }
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error: error as Error | null };
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+      },
+    });
   };
 
   const signOut = async () => {
     const supabase = getSupabase();
-    if (supabase) {
-      await supabase.auth.signOut();
-    }
+    await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setEntitlements(defaultEntitlements);
@@ -200,8 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         entitlements,
         loading,
-        signUp,
-        signIn,
+        signInWithGoogle,
         signOut,
         refreshEntitlements,
       }}

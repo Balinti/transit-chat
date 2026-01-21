@@ -1,53 +1,77 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// Hardcoded Supabase configuration for shared auth
+const SUPABASE_URL = 'https://api.srv936332.hstgr.cloud';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE';
+export const APP_SLUG = 'transit-chat';
+
 // Client-side Supabase client (uses anon key) - lazy initialization
 let _supabase: SupabaseClient | null = null;
 
-export function getSupabase(): SupabaseClient | null {
+export function getSupabase(): SupabaseClient {
   if (_supabase) return _supabase;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return null;
-  }
-
-  _supabase = createClient(supabaseUrl, supabaseAnonKey);
+  _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   return _supabase;
 }
 
 // For backwards compatibility - lazily creates client
 export const supabase = {
   get auth() {
-    const client = getSupabase();
-    if (!client) {
-      throw new Error('Supabase not configured');
-    }
-    return client.auth;
+    return getSupabase().auth;
   },
   from(table: string) {
-    const client = getSupabase();
-    if (!client) {
-      throw new Error('Supabase not configured');
-    }
-    return client.from(table);
+    return getSupabase().from(table);
   },
 };
 
+// Track user login - upserts to user_tracking table
+export async function trackUserLogin(userEmail: string): Promise<void> {
+  const supabase = getSupabase();
+  const now = new Date().toISOString();
+
+  try {
+    // Try to update existing record first
+    const { data: existing } = await supabase
+      .from('user_tracking')
+      .select('login_cnt')
+      .eq('user_email', userEmail)
+      .eq('app', APP_SLUG)
+      .single();
+
+    if (existing) {
+      // Update existing record
+      await supabase
+        .from('user_tracking')
+        .update({
+          login_cnt: existing.login_cnt + 1,
+          last_login_ts: now,
+        })
+        .eq('user_email', userEmail)
+        .eq('app', APP_SLUG);
+    } else {
+      // Insert new record
+      await supabase.from('user_tracking').insert({
+        user_email: userEmail,
+        app: APP_SLUG,
+        login_cnt: 1,
+        last_login_ts: now,
+      });
+    }
+  } catch (error) {
+    console.error('Failed to track user login:', error);
+  }
+}
+
 // Server-side Supabase client (uses service role key)
 export function getServiceSupabase(): SupabaseClient {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set');
-  }
   if (!serviceRoleKey) {
     throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set');
   }
 
-  return createClient(supabaseUrl, serviceRoleKey, {
+  return createClient(SUPABASE_URL, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -55,10 +79,7 @@ export function getServiceSupabase(): SupabaseClient {
   });
 }
 
-// Check if Supabase is configured
+// Check if Supabase is configured - always true now with hardcoded values
 export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  return true;
 }
